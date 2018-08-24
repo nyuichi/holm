@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'yaml'
+require 'fileutils'
+
+params = ARGV.getopts("", "dir:.", "help")
+
+if params["help"] || ARGV.empty?
+  puts <<-EOS
+usage: holm [--help] [--dir path] <command> [<args>]
+
+commands:
+  holm install <user>/<repository>
+EOS
+  exit 0
+end
+
+command = ARGV[0]
+
+fail "unknown command #{command}" unless command == "install"
+
+spec = ARGV[1]
+url = "https://raw.githubusercontent.com/#{spec}/master"
+
+conf = YAML.load `curl "#{url}/.holm.yml"`
+
+conf = conf.map do |filename|
+  "#{params["dir"]}/#{filename}"
+end
+
+conf.each do |filename|
+  fail "file already exists: #{filename}" if File.exists? filename
+end
+
+conf.each do |filename|
+  FileUtils.mkdir_p(File.dirname filename)
+  File.write(filename, `curl "#{url}/#{filename}"`)
+end
